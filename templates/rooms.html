@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Rooms - Hostel CRM{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Rooms & Types</h1>
+            <p class="text-sm text-gray-500 mt-1">Manage your room inventory</p>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="openRoomTypeModal()" class="btn-secondary text-sm">
+                <i class="fas fa-plus mr-2"></i>Room Type
+            </button>
+            <button onclick="openRoomModal()" class="btn-primary text-sm">
+                <i class="fas fa-plus mr-2"></i>Room
+            </button>
+        </div>
+    </div>
+
+    <!-- Room Types -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="roomTypesGrid">
+        <!-- Populated by JS -->
+    </div>
+
+    <!-- Rooms Table -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-gray-200">
+            <h3 class="font-semibold text-gray-700">All Rooms</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">Room</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">Type</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">Floor</th>
+                        <th class="text-center py-3 px-4 font-semibold text-gray-600">Status</th>
+                        <th class="text-right py-3 px-4 font-semibold text-gray-600">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="roomsTable">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Room Type Modal -->
+<div class="modal-overlay" id="roomTypeModal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Add Room Type</h3>
+        </div>
+        <form id="roomTypeForm" class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Name *</label>
+                <input type="text" id="rtName" class="form-input" placeholder="e.g. Deluxe Room" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Color</label>
+                <input type="color" id="rtColor" class="form-input h-10" value="#e8e4dc">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Base Price (IDR)</label>
+                    <input type="number" id="rtPrice" class="form-input" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Capacity</label>
+                    <input type="number" id="rtCapacity" class="form-input" value="2" min="1">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Description</label>
+                <textarea id="rtDesc" class="form-input" rows="2" placeholder="Room description..."></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="btn-primary flex-1">Add Room Type</button>
+                <button type="button" onclick="closeModal('roomTypeModal')" class="btn-secondary">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Room Modal -->
+<div class="modal-overlay" id="roomModal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Add Room</h3>
+        </div>
+        <form id="roomForm" class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Room Name/Number *</label>
+                <input type="text" id="roomName" class="form-input" placeholder="e.g. A1, 101" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Room Type *</label>
+                <select id="roomTypeSelect" class="form-input" required>
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Floor</label>
+                <input type="text" id="roomFloor" class="form-input" placeholder="1">
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="btn-primary flex-1">Add Room</button>
+                <button type="button" onclick="closeModal('roomModal')" class="btn-secondary">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    async function loadRooms() {
+        try {
+            const [rooms, roomTypes] = await Promise.all([
+                apiCall('/api/rooms'),
+                apiCall('/api/room-types')
+            ]);
+
+            // Render room types cards
+            const typesGrid = document.getElementById('roomTypesGrid');
+            typesGrid.innerHTML = roomTypes.map(rt => {
+                const count = rooms.filter(r => r.room_type_id === rt.id).length;
+                return `
+                    <div class="stat-card" style="border-left: 4px solid ${rt.color}">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-semibold text-gray-800">${rt.name}</h4>
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">${count} rooms</span>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-2">${rt.description || 'No description'}</p>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-500">Base: Rp ${rt.base_price.toLocaleString('id-ID')}</span>
+                            <span class="text-gray-500">Capacity: ${rt.capacity}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Render rooms table
+            const tbody = document.getElementById('roomsTable');
+            tbody.innerHTML = rooms.map(r => `
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold" style="background: ${r.color}">
+                                ${r.name.charAt(0)}
+                            </div>
+                            <span class="font-medium text-gray-800">${r.name}</span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-gray-600">${r.room_type_name}</td>
+                    <td class="py-3 px-4 text-gray-600">Floor ${r.floor}</td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
+                            ${r.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                            <i class="fas fa-${r.status === 'active' ? 'check' : 'times'}"></i>
+                            ${r.status}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                        <button onclick="toggleRoomStatus(${r.id}, '${r.status}')" class="text-sm text-gray-500 hover:text-gray-700">
+                            ${r.status === 'active' ? 'Deactivate' : 'Activate'}
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Populate room type select
+            document.getElementById('roomTypeSelect').innerHTML = roomTypes.map(rt => 
+                `<option value="${rt.id}">${rt.name}</option>`
+            ).join('');
+
+        } catch (error) {
+            console.error('Rooms load error:', error);
+        }
+    }
+
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('active');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    function openRoomTypeModal() {
+        document.getElementById('roomTypeForm').reset();
+        openModal('roomTypeModal');
+    }
+
+    function openRoomModal() {
+        document.getElementById('roomForm').reset();
+        openModal('roomModal');
+    }
+
+    document.getElementById('roomTypeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            name: document.getElementById('rtName').value,
+            color: document.getElementById('rtColor').value,
+            base_price: parseFloat(document.getElementById('rtPrice').value) || 0,
+            capacity: parseInt(document.getElementById('rtCapacity').value) || 2,
+            description: document.getElementById('rtDesc').value
+        };
+
+        try {
+            await apiCall('/api/room-types', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            showToast('Room type added!');
+            closeModal('roomTypeModal');
+            loadRooms();
+        } catch (error) {
+            console.error('Room type save error:', error);
+        }
+    });
+
+    document.getElementById('roomForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            name: document.getElementById('roomName').value,
+            room_type_id: parseInt(document.getElementById('roomTypeSelect').value),
+            floor: document.getElementById('roomFloor').value || '1'
+        };
+
+        try {
+            await apiCall('/api/rooms', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            showToast('Room added!');
+            closeModal('roomModal');
+            loadRooms();
+        } catch (error) {
+            console.error('Room save error:', error);
+        }
+    });
+
+    async function toggleRoomStatus(roomId, currentStatus) {
+        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+        try {
+            await apiCall(`/api/rooms/${roomId}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: newStatus })
+            });
+            showToast(`Room ${newStatus === 'active' ? 'activated' : 'deactivated'}!`);
+            loadRooms();
+        } catch (error) {
+            console.error('Toggle status error:', error);
+        }
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.classList.remove('active');
+        });
+    });
+
+    loadRooms();
+</script>
+{% endblock %}

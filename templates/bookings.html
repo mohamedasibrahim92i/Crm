@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Bookings - Hostel CRM{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">All Bookings</h1>
+            <p class="text-sm text-gray-500 mt-1">Manage and filter all reservations</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="/calendar" class="btn-primary text-sm">
+                <i class="fas fa-plus mr-2"></i>New Booking
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <input type="text" id="searchInput" class="form-input" placeholder="Search guest name..." onkeyup="filterBookings()">
+            <select id="sourceFilter" class="form-input" onchange="filterBookings()">
+                <option value="">All Sources</option>
+                <option value="bookingcom">Booking.com</option>
+                <option value="agoda">Agoda</option>
+                <option value="traveloka">Traveloka</option>
+                <option value="tripadvisor">TripAdvisor</option>
+                <option value="hostelworld">Hostelworld</option>
+                <option value="manual">Manual</option>
+                <option value="walkin">Walk-in</option>
+            </select>
+            <select id="statusFilter" class="form-input" onchange="filterBookings()">
+                <option value="">All Status</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="pending">Pending</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+            <select id="paymentFilter" class="form-input" onchange="filterBookings()">
+                <option value="">All Payments</option>
+                <option value="paid">Paid</option>
+                <option value="partial">Partial</option>
+                <option value="pending">Pending</option>
+            </select>
+            <input type="date" id="dateFilter" class="form-input" onchange="filterBookings()">
+        </div>
+    </div>
+
+    <!-- Bookings Table -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">Guest</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">Room</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">Dates</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-600">Source</th>
+                        <th class="text-right py-3 px-4 font-semibold text-gray-600">Price</th>
+                        <th class="text-center py-3 px-4 font-semibold text-gray-600">Payment</th>
+                        <th class="text-center py-3 px-4 font-semibold text-gray-600">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="bookingsTable">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+        <div id="noResults" class="hidden p-8 text-center text-gray-500">
+            <i class="fas fa-search text-3xl mb-2 text-gray-300"></i>
+            <p>No bookings found matching your criteria</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let allBookings = [];
+
+    const sourceLabels = {
+        'bookingcom': 'Booking.com',
+        'agoda': 'Agoda',
+        'traveloka': 'Traveloka',
+        'tripadvisor': 'TripAdvisor',
+        'hostelworld': 'Hostelworld',
+        'manual': 'Manual',
+        'walkin': 'Walk-in'
+    };
+
+    async function loadBookings() {
+        try {
+            allBookings = await apiCall('/api/bookings');
+            renderBookings(allBookings);
+        } catch (error) {
+            console.error('Bookings load error:', error);
+        }
+    }
+
+    function renderBookings(bookings) {
+        const tbody = document.getElementById('bookingsTable');
+        const noResults = document.getElementById('noResults');
+
+        if (bookings.length === 0) {
+            tbody.innerHTML = '';
+            noResults.classList.remove('hidden');
+            return;
+        }
+
+        noResults.classList.add('hidden');
+
+        tbody.innerHTML = bookings.map(b => `
+            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                <td class="py-3 px-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center text-white text-xs font-bold">
+                            ${b.guest_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-800">${b.guest_name}</p>
+                            <p class="text-xs text-gray-500">${b.guest_phone || 'No phone'}</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="py-3 px-4">
+                    <span class="font-medium text-gray-700">${b.room_name}</span>
+                    <p class="text-xs text-gray-500">${b.nights} nights</p>
+                </td>
+                <td class="py-3 px-4">
+                    <p class="text-gray-700">${b.check_in}</p>
+                    <p class="text-xs text-gray-500">to ${b.check_out}</p>
+                </td>
+                <td class="py-3 px-4">
+                    <span class="source-badge ${b.source}">${sourceLabels[b.source] || b.source}</span>
+                </td>
+                <td class="py-3 px-4 text-right">
+                    <p class="font-semibold text-gray-800">Rp ${b.total_price.toLocaleString('id-ID')}</p>
+                    <p class="text-xs ${b.payment_status === 'paid' ? 'text-green-500' : b.payment_status === 'partial' ? 'text-orange-500' : 'text-red-500'}">
+                        ${b.amount_paid > 0 ? 'Paid: Rp ' + b.amount_paid.toLocaleString('id-ID') : 'Unpaid'}
+                    </p>
+                </td>
+                <td class="py-3 px-4 text-center">
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
+                        ${b.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 
+                          b.payment_status === 'partial' ? 'bg-orange-100 text-orange-700' : 
+                          'bg-red-100 text-red-700'}">
+                        <i class="fas fa-${b.payment_status === 'paid' ? 'check' : b.payment_status === 'partial' ? 'adjust' : 'clock'}"></i>
+                        ${b.payment_status}
+                    </span>
+                </td>
+                <td class="py-3 px-4 text-center">
+                    <div class="flex items-center justify-center gap-2">
+                        <button onclick="viewBooking(${b.id})" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-colors" title="View">
+                            <i class="fas fa-eye text-xs"></i>
+                        </button>
+                        <button onclick="editBooking(${b.id})" class="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center text-blue-600 transition-colors" title="Edit">
+                            <i class="fas fa-edit text-xs"></i>
+                        </button>
+                        <button onclick="cancelBooking(${b.id})" class="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-600 transition-colors" title="Cancel">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function filterBookings() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const source = document.getElementById('sourceFilter').value;
+        const status = document.getElementById('statusFilter').value;
+        const payment = document.getElementById('paymentFilter').value;
+        const date = document.getElementById('dateFilter').value;
+
+        let filtered = allBookings.filter(b => {
+            if (search && !b.guest_name.toLowerCase().includes(search)) return false;
+            if (source && b.source !== source) return false;
+            if (status && b.status !== status) return false;
+            if (payment && b.payment_status !== payment) return false;
+            if (date && b.check_in !== date && b.check_out !== date) return false;
+            return true;
+        });
+
+        renderBookings(filtered);
+    }
+
+    function viewBooking(id) {
+        window.location.href = `/calendar`;
+    }
+
+    function editBooking(id) {
+        window.location.href = `/calendar`;
+    }
+
+    async function cancelBooking(id) {
+        if (!confirm('Are you sure you want to cancel this booking?')) return;
+
+        try {
+            await apiCall(`/api/bookings/${id}`, { method: 'DELETE' });
+            showToast('Booking cancelled');
+            loadBookings();
+        } catch (error) {
+            console.error('Cancel error:', error);
+        }
+    }
+
+    loadBookings();
+</script>
+{% endblock %}
