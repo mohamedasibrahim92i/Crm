@@ -1,4 +1,4 @@
-# 🏨 Hostel CRM - Yogyakarta
+# 🏨 Hostel CRM - 
 
 A complete, lightweight, and mobile-friendly Property Management System (PMS) built specifically for hostels in Indonesia. Designed for easy self-hosting with minimal technical knowledge.
 
