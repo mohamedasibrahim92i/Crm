@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Hostel CRM{% endblock %}
+
+{% block auth_content %}
+<div class="min-h-screen flex items-center justify-center p-4" style="background: linear-gradient(135deg, #faf9f6 0%, #f0ece4 100%);">
+    <div class="w-full max-w-md">
+        <!-- Logo -->
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-gradient-to-br from-amber-700 to-amber-900 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4 shadow-lg">
+                H
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">Hostel CRM</h1>
+            <p class="text-sm text-gray-500 mt-1">Yogyakarta Property Management</p>
+        </div>
+
+        <!-- Login Card -->
+        <div class="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+            <h2 class="text-lg font-semibold text-gray-700 mb-6 text-center">Welcome Back</h2>
+
+            <!-- Google Sign In -->
+            <div id="g_id_onload"
+                 data-client_id="YOUR_GOOGLE_CLIENT_ID"
+                 data-callback="handleGoogleSignIn"
+                 data-auto_prompt="false">
+            </div>
+            <div class="g_id_signin w-full mb-4"
+                 data-type="standard"
+                 data-size="large"
+                 data-theme="outline"
+                 data-text="sign_in_with"
+                 data-shape="rectangular"
+                 data-logo_alignment="center"
+                 data-width="100%">
+            </div>
+
+            <div class="relative my-6">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-gray-200"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-4 bg-white text-gray-400">or continue with</span>
+                </div>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Username</label>
+                    <input type="text" id="username" class="form-input" placeholder="Enter username" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Password</label>
+                    <input type="password" id="password" class="form-input" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="btn-primary w-full py-3 text-sm font-semibold">
+                    <i class="fas fa-sign-in-alt mr-2"></i>Sign In
+                </button>
+            </form>
+
+            <p class="text-center text-sm text-gray-500 mt-4">
+                Default: admin / admin123
+            </p>
+        </div>
+
+        <p class="text-center text-xs text-gray-400 mt-6">
+            © 2026 Hostel CRM. Simple & Powerful.
+        </p>
+    </div>
+</div>
+
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button');
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Signing in...';
+        btn.disabled = true;
+
+        try {
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                window.location.href = data.redirect;
+            } else {
+                showToast(data.message, 'error');
+                btn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Sign In';
+                btn.disabled = false;
+            }
+        } catch (error) {
+            showToast('Connection error', 'error');
+            btn.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Sign In';
+            btn.disabled = false;
+        }
+    });
+
+    async function handleGoogleSignIn(response) {
+        const credential = response.credential;
+        const payload = JSON.parse(atob(credential.split('.')[1]));
+
+        try {
+            const res = await fetch('/google-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: payload.email,
+                    name: payload.name,
+                    googleId: payload.sub
+                })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                window.location.href = data.redirect;
+            } else {
+                showToast(data.message, 'error');
+            }
+        } catch (error) {
+            showToast('Google sign-in failed', 'error');
+        }
+    }
+</script>
+{% endblock %}

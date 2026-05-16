@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Hostel CRM{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">Settings</h1>
+        <p class="text-sm text-gray-500 mt-1">Configure your hostel CRM</p>
+    </div>
+
+    <!-- General Settings -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-gray-200 bg-gray-50">
+            <h3 class="font-semibold text-gray-700"><i class="fas fa-hotel mr-2"></i>Property Information</h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Property Name</label>
+                    <input type="text" class="form-input" value="Sleepy Raccoon Hostel" id="propName">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Location</label>
+                    <input type="text" class="form-input" value="Yogyakarta, Indonesia" id="propLocation">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Phone</label>
+                    <input type="tel" class="form-input" value="+62 274-123-456" id="propPhone">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Email</label>
+                    <input type="email" class="form-input" value="info@sleepyraccoon.com" id="propEmail">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Address</label>
+                <textarea class="form-input" rows="2" id="propAddress">Jl. Prawirotaman No. 12, Yogyakarta</textarea>
+            </div>
+            <button onclick="savePropertyInfo()" class="btn-primary">
+                <i class="fas fa-save mr-2"></i>Save Changes
+            </button>
+        </div>
+    </div>
+
+    <!-- OTA Integration -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-gray-200 bg-gray-50">
+            <h3 class="font-semibold text-gray-700"><i class="fas fa-plug mr-2"></i>OTA Integrations</h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <p class="text-sm text-gray-500">Connect your booking channels to automatically sync reservations.</p>
+
+            <div class="space-y-3">
+                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-blue-900 flex items-center justify-center text-white font-bold text-sm">B</div>
+                        <div>
+                            <p class="font-medium text-gray-800">Booking.com</p>
+                            <p class="text-xs text-gray-500">Channel Manager API</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-400">Configure API key in .env file</span>
+                        <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">Setup Required</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-purple-700 flex items-center justify-center text-white font-bold text-sm">A</div>
+                        <div>
+                            <p class="font-medium text-gray-800">Agoda</p>
+                            <p class="text-xs text-gray-500">Partner API</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-400">Configure API key in .env file</span>
+                        <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">Setup Required</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center text-white font-bold text-sm">T</div>
+                        <div>
+                            <p class="font-medium text-gray-800">Traveloka</p>
+                            <p class="text-xs text-gray-500">Partner API</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-400">Configure API key in .env file</span>
+                        <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">Setup Required</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center text-white font-bold text-sm">TA</div>
+                        <div>
+                            <p class="font-medium text-gray-800">TripAdvisor</p>
+                            <p class="text-xs text-gray-500">Instant Booking API</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-400">Configure API key in .env file</span>
+                        <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">Setup Required</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center text-white font-bold text-sm">HW</div>
+                        <div>
+                            <p class="font-medium text-gray-800">Hostelworld</p>
+                            <p class="text-xs text-gray-500">Channel Manager API</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-400">Configure API key in .env file</span>
+                        <span class="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full">Setup Required</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Currency & Language -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-gray-200 bg-gray-50">
+            <h3 class="font-semibold text-gray-700"><i class="fas fa-globe mr-2"></i>Currency & Language</h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Currency</label>
+                    <select class="form-input" id="currency">
+                        <option value="IDR" selected>Indonesian Rupiah (IDR)</option>
+                        <option value="USD">US Dollar (USD)</option>
+                        <option value="EUR">Euro (EUR)</option>
+                        <option value="MYR">Malaysian Ringgit (MYR)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Language</label>
+                    <select class="form-input" id="language">
+                        <option value="en" selected>English</option>
+                        <option value="id">Bahasa Indonesia</option>
+                        <option value="ms">Bahasa Melayu</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Management -->
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-gray-200 bg-gray-50">
+            <h3 class="font-semibold text-gray-700"><i class="fas fa-database mr-2"></i>Data Management</h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                    <p class="font-medium text-gray-700">Database File</p>
+                    <p class="text-xs text-gray-500">SQLite database location</p>
+                </div>
+                <code class="text-xs bg-gray-200 px-2 py-1 rounded">hostel_crm.db</code>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="exportData()" class="btn-secondary">
+                    <i class="fas fa-download mr-2"></i>Export Data
+                </button>
+                <button onclick="backupDatabase()" class="btn-secondary">
+                    <i class="fas fa-archive mr-2"></i>Backup DB
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function savePropertyInfo() {
+        showToast('Property information saved!', 'success');
+    }
+
+    function exportData() {
+        showToast('Export feature coming soon!', 'info');
+    }
+
+    function backupDatabase() {
+        showToast('Database backup created!', 'success');
+    }
+</script>
+{% endblock %}

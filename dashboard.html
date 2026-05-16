@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Hostel CRM{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
+            <p class="text-sm text-gray-500 mt-1">Real-time overview of your hostel</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="/calendar" class="btn-primary text-sm">
+                <i class="fas fa-plus mr-2"></i>New Booking
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-3">
+                <div class="icon bg-blue-50 text-blue-600">
+                    <i class="fas fa-door-open"></i>
+                </div>
+                <span class="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">Today</span>
+            </div>
+            <p class="text-2xl font-bold text-gray-800" id="todayCheckins">-</p>
+            <p class="text-xs text-gray-500 mt-1">Check-ins</p>
+        </div>
+
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-3">
+                <div class="icon bg-orange-50 text-orange-600">
+                    <i class="fas fa-door-closed"></i>
+                </div>
+                <span class="text-xs font-medium text-orange-600 bg-orange-50 px-2 py-1 rounded-full">Today</span>
+            </div>
+            <p class="text-2xl font-bold text-gray-800" id="todayCheckouts">-</p>
+            <p class="text-xs text-gray-500 mt-1">Check-outs</p>
+        </div>
+
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-3">
+                <div class="icon bg-green-50 text-green-600">
+                    <i class="fas fa-bed"></i>
+                </div>
+                <span class="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">Now</span>
+            </div>
+            <p class="text-2xl font-bold text-gray-800" id="todayStaying">-</p>
+            <p class="text-xs text-gray-500 mt-1">Currently Staying</p>
+        </div>
+
+        <div class="stat-card">
+            <div class="flex items-center justify-between mb-3">
+                <div class="icon bg-amber-50 text-amber-600">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <span class="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-full">Today</span>
+            </div>
+            <p class="text-2xl font-bold text-gray-800" id="todayRevenue">-</p>
+            <p class="text-xs text-gray-500 mt-1">Revenue (IDR)</p>
+        </div>
+    </div>
+
+    <!-- Revenue & Occupancy Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- Weekly Revenue Chart -->
+        <div class="chart-container lg:col-span-2">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-700">Weekly Revenue & Bookings</h3>
+                <select id="chartPeriod" class="form-input w-auto text-xs py-1 px-2" onchange="loadDashboard()">
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                </select>
+            </div>
+            <canvas id="revenueChart" height="200"></canvas>
+        </div>
+
+        <!-- Occupancy Gauge -->
+        <div class="chart-container">
+            <h3 class="font-semibold text-gray-700 mb-4">Occupancy Rate</h3>
+            <div class="flex flex-col items-center">
+                <div class="relative w-40 h-40">
+                    <canvas id="occupancyChart"></canvas>
+                    <div class="absolute inset-0 flex items-center justify-center flex-col">
+                        <span class="text-3xl font-bold text-gray-800" id="occupancyRate">-%</span>
+                        <span class="text-xs text-gray-500">Occupied</span>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600 mt-3">
+                    <span id="occupiedRooms">-</span> / <span id="totalRooms">-</span> rooms
+                </p>
+            </div>
+
+            <!-- Revenue Summary -->
+            <div class="mt-6 space-y-3">
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span class="text-sm text-gray-600">Today's Revenue</span>
+                    <span class="font-semibold text-gray-800" id="revToday">-</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span class="text-sm text-gray-600">Weekly Revenue</span>
+                    <span class="font-semibold text-gray-800" id="revWeek">-</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span class="text-sm text-gray-600">Monthly Revenue</span>
+                    <span class="font-semibold text-gray-800" id="revMonth">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Sources & Recent Bookings -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Booking Sources Pie Chart -->
+        <div class="chart-container">
+            <h3 class="font-semibold text-gray-700 mb-4">Booking Sources (This Month)</h3>
+            <div class="flex items-center gap-6">
+                <div class="flex-1" style="max-width: 200px;">
+                    <canvas id="sourcesChart"></canvas>
+                </div>
+                <div class="flex-1 space-y-2" id="sourcesLegend">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="chart-container">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-700">Recent Bookings</h3>
+                <a href="/bookings" class="text-sm text-amber-700 hover:text-amber-800">View All</a>
+            </div>
+            <div class="space-y-3" id="recentBookings">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Performance Table -->
+    <div class="chart-container">
+        <h3 class="font-semibold text-gray-700 mb-4">Monthly Performance Overview</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200">
+                        <th class="text-left py-3 px-2 text-gray-600 font-medium">Metric</th>
+                        <th class="text-center py-3 px-2 text-gray-600 font-medium">This Week</th>
+                        <th class="text-center py-3 px-2 text-gray-600 font-medium">This Month</th>
+                        <th class="text-center py-3 px-2 text-gray-600 font-medium">Trend</th>
+                    </tr>
+                </thead>
+                <tbody id="performanceTable">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let revenueChart, occupancyChart, sourcesChart;
+
+    async function loadDashboard() {
+        try {
+            const data = await apiCall('/api/dashboard-stats');
+
+            // Update stat cards
+            document.getElementById('todayCheckins').textContent = data.today.checkins;
+            document.getElementById('todayCheckouts').textContent = data.today.checkouts;
+            document.getElementById('todayStaying').textContent = data.today.staying;
+            document.getElementById('todayRevenue').textContent = 'Rp ' + data.today.revenue.toLocaleString('id-ID');
+
+            // Update occupancy
+            document.getElementById('occupancyRate').textContent = data.occupancy.rate + '%';
+            document.getElementById('occupiedRooms').textContent = data.occupancy.occupied;
+            document.getElementById('totalRooms').textContent = data.occupancy.total;
+
+            // Update revenue summary
+            document.getElementById('revToday').textContent = 'Rp ' + data.revenue.today.toLocaleString('id-ID');
+            document.getElementById('revWeek').textContent = 'Rp ' + data.revenue.week.toLocaleString('id-ID');
+            document.getElementById('revMonth').textContent = 'Rp ' + data.revenue.month.toLocaleString('id-ID');
+
+            // Revenue Chart
+            const ctx1 = document.getElementById('revenueChart').getContext('2d');
+            if (revenueChart) revenueChart.destroy();
+
+            revenueChart = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: data.weekly_chart.map(d => d.day),
+                    datasets: [{
+                        label: 'Revenue (IDR)',
+                        data: data.weekly_chart.map(d => d.revenue),
+                        backgroundColor: 'rgba(139, 115, 85, 0.8)',
+                        borderColor: 'rgba(139, 115, 85, 1)',
+                        borderWidth: 1,
+                        borderRadius: 6,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Bookings',
+                        data: data.weekly_chart.map(d => d.bookings),
+                        type: 'line',
+                        borderColor: 'rgba(52, 152, 219, 1)',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        pointBackgroundColor: 'white',
+                        pointBorderWidth: 2,
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: {
+                                callback: function(value) {
+                                    return 'Rp ' + (value / 1000).toFixed(0) + 'K';
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { stepSize: 1 }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // Occupancy Doughnut
+            const ctx2 = document.getElementById('occupancyChart').getContext('2d');
+            if (occupancyChart) occupancyChart.destroy();
+
+            occupancyChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Occupied', 'Available'],
+                    datasets: [{
+                        data: [data.occupancy.occupied, data.occupancy.total - data.occupancy.occupied],
+                        backgroundColor: ['rgba(139, 115, 85, 0.9)', 'rgba(200, 190, 175, 0.3)'],
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Sources Pie Chart
+            const ctx3 = document.getElementById('sourcesChart').getContext('2d');
+            if (sourcesChart) sourcesChart.destroy();
+
+            const sourceColors = {
+                'bookingcom': '#003580',
+                'agoda': '#7b1fa2',
+                'traveloka': '#1ba0e2',
+                'tripadvisor': '#00af87',
+                'hostelworld': '#f25621',
+                'manual': '#a89880',
+                'walkin': '#27ae60'
+            };
+
+            const sourceLabels = {
+                'bookingcom': 'Booking.com',
+                'agoda': 'Agoda',
+                'traveloka': 'Traveloka',
+                'tripadvisor': 'TripAdvisor',
+                'hostelworld': 'Hostelworld',
+                'manual': 'Manual',
+                'walkin': 'Walk-in'
+            };
+
+            sourcesChart = new Chart(ctx3, {
+                type: 'pie',
+                data: {
+                    labels: data.sources.map(s => sourceLabels[s.name] || s.name),
+                    datasets: [{
+                        data: data.sources.map(s => s.count),
+                        backgroundColor: data.sources.map(s => sourceColors[s.name] || '#999'),
+                        borderWidth: 2,
+                        borderColor: 'white'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // Sources Legend
+            const legendHtml = data.sources.map(s => `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full" style="background: ${sourceColors[s.name] || '#999'}"></div>
+                        <span class="text-sm text-gray-600">${sourceLabels[s.name] || s.name}</span>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-700">${s.count}</span>
+                </div>
+            `).join('');
+            document.getElementById('sourcesLegend').innerHTML = legendHtml;
+
+            // Performance Table
+            const tableHtml = `
+                <tr class="border-b border-gray-100">
+                    <td class="py-3 px-2 text-gray-700">Total Bookings</td>
+                    <td class="py-3 px-2 text-center font-semibold">${data.weekly_chart.reduce((a,b) => a + b.bookings, 0)}</td>
+                    <td class="py-3 px-2 text-center font-semibold">-</td>
+                    <td class="py-3 px-2 text-center"><span class="text-green-500"><i class="fas fa-arrow-up"></i></span></td>
+                </tr>
+                <tr class="border-b border-gray-100">
+                    <td class="py-3 px-2 text-gray-700">Avg. Daily Rate</td>
+                    <td class="py-3 px-2 text-center font-semibold">Rp ${Math.round(data.revenue.week / 7).toLocaleString('id-ID')}</td>
+                    <td class="py-3 px-2 text-center font-semibold">-</td>
+                    <td class="py-3 px-2 text-center"><span class="text-green-500"><i class="fas fa-arrow-up"></i></span></td>
+                </tr>
+                <tr class="border-b border-gray-100">
+                    <td class="py-3 px-2 text-gray-700">Occupancy Rate</td>
+                    <td class="py-3 px-2 text-center font-semibold">${data.occupancy.rate}%</td>
+                    <td class="py-3 px-2 text-center font-semibold">-</td>
+                    <td class="py-3 px-2 text-center"><span class="text-green-500"><i class="fas fa-arrow-up"></i></span></td>
+                </tr>
+                <tr>
+                    <td class="py-3 px-2 text-gray-700">Revenue per Available Room</td>
+                    <td class="py-3 px-2 text-center font-semibold">Rp ${Math.round(data.revenue.week / data.occupancy.total / 7).toLocaleString('id-ID')}</td>
+                    <td class="py-3 px-2 text-center font-semibold">-</td>
+                    <td class="py-3 px-2 text-center"><span class="text-green-500"><i class="fas fa-arrow-up"></i></span></td>
+                </tr>
+            `;
+            document.getElementById('performanceTable').innerHTML = tableHtml;
+
+        } catch (error) {
+            console.error('Dashboard load error:', error);
+        }
+    }
+
+    // Load recent bookings
+    async function loadRecentBookings() {
+        try {
+            const bookings = await apiCall('/api/bookings');
+            const recent = bookings.slice(0, 5);
+
+            const html = recent.map(b => `
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer" onclick="window.location.href='/bookings'">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center text-white text-sm font-bold">
+                        ${b.guest_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-800 truncate">${b.guest_name}</p>
+                        <p class="text-xs text-gray-500">${b.room_name} · ${b.check_in} to ${b.check_out}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="source-badge ${b.source}">${b.source}</span>
+                        <p class="text-xs text-gray-500 mt-1">Rp ${b.total_price.toLocaleString('id-ID')}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('recentBookings').innerHTML = html;
+        } catch (error) {
+            console.error('Recent bookings error:', error);
+        }
+    }
+
+    // Initialize
+    loadDashboard();
+    loadRecentBookings();
+</script>
+{% endblock %}

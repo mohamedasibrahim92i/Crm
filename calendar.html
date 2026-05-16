@@ -1,0 +1,979 @@
+{% extends "base.html" %}
+
+{% block title %}Calendar - Hostel CRM{% endblock %}
+
+{% block extra_css %}
+<style>
+    .calendar-wrapper {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: calc(100vh - 200px);
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .calendar-wrapper::-webkit-scrollbar { height: 8px; }
+
+    .add-booking-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .calendar-cell:hover .add-booking-cell {
+        opacity: 1;
+    }
+
+    .add-booking-cell i {
+        color: #c4a882;
+        font-size: 1.2rem;
+        cursor: pointer;
+    }
+
+    .add-booking-cell i:hover {
+        color: #8b7355;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        color: #5a5248;
+    }
+
+    .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        border: 1px solid;
+    }
+
+    .date-nav-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        border: 1px solid #ddd8cf;
+        background: white;
+        color: #5a5248;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .date-nav-btn:hover {
+        background: #f0ece4;
+        border-color: #c4a882;
+    }
+
+    .booking-tooltip {
+        position: absolute;
+        background: white;
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        z-index: 50;
+        min-width: 220px;
+        display: none;
+        border: 1px solid #ece8e0;
+    }
+
+    .booking-tooltip.active {
+        display: block;
+    }
+
+    .room-actions {
+        display: none;
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .room-header:hover .room-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .room-actions button {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        border: none;
+        background: rgba(255,255,255,0.8);
+        cursor: pointer;
+        font-size: 0.7rem;
+        color: #5a5248;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Calendar</h1>
+            <p class="text-sm text-gray-500 mt-1">Manage bookings and room availability</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button class="date-nav-btn" onclick="changeDate(-7)">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="date-nav-btn" onclick="changeDate(-1)">
+                <i class="fas fa-chevron-left" style="font-size:0.7rem"></i>
+            </button>
+            <span id="dateRange" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium min-w-[200px] text-center">
+                Loading...
+            </span>
+            <button class="date-nav-btn" onclick="changeDate(1)">
+                <i class="fas fa-chevron-right" style="font-size:0.7rem"></i>
+            </button>
+            <button class="date-nav-btn" onclick="changeDate(7)">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <button class="date-nav-btn" onclick="goToToday()" title="Today">
+                <i class="fas fa-calendar-day"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="flex flex-wrap gap-4 p-3 bg-white rounded-lg border border-gray-200">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sources:</span>
+        <div class="legend-item">
+            <div class="legend-color bookingcom" style="background:#003580;border-color:#002a66"></div>
+            <span>Booking.com</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color agoda" style="background:#7b1fa2;border-color:#6a1b9a"></div>
+            <span>Agoda</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color traveloka" style="background:#1ba0e2;border-color:#1689c5"></div>
+            <span>Traveloka</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color tripadvisor" style="background:#00af87;border-color:#009a75"></div>
+            <span>TripAdvisor</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color hostelworld" style="background:#f25621;border-color:#d94a1a"></div>
+            <span>Hostelworld</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color manual" style="background:#e8e4dc;border-color:#a89880"></div>
+            <span>Manual</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color walkin" style="background:#d5f5e3;border-color:#27ae60"></div>
+            <span>Walk-in</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color extension" style="background:#fdebd0;border-color:#f39c12"></div>
+            <span>Extension</span>
+        </div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="calendar-wrapper bg-white border border-gray-200" id="calendarContainer">
+        <!-- Generated by JS -->
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="flex gap-2">
+        <button onclick="openRoomTypeModal()" class="btn-secondary text-sm">
+            <i class="fas fa-plus mr-2"></i>Add Room Type
+        </button>
+        <button onclick="openRoomModal()" class="btn-secondary text-sm">
+            <i class="fas fa-plus mr-2"></i>Add Room
+        </button>
+        <button onclick="openPriceModal()" class="btn-secondary text-sm">
+            <i class="fas fa-tag mr-2"></i>Set Prices
+        </button>
+    </div>
+</div>
+
+<!-- Booking Modal -->
+<div class="modal-overlay" id="bookingModal">
+    <div class="modal-content">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-800" id="modalTitle">Add Booking</h3>
+                <button onclick="closeModal('bookingModal')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <form id="bookingForm" class="p-6 space-y-4">
+            <input type="hidden" id="bookingId">
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Guest Name *</label>
+                    <input type="text" id="guestName" class="form-input" placeholder="Full name" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Phone</label>
+                    <input type="tel" id="guestPhone" class="form-input" placeholder="+62...">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Email</label>
+                    <input type="email" id="guestEmail" class="form-input" placeholder="email@example.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">ID Number</label>
+                    <input type="text" id="guestId" class="form-input" placeholder="Passport/KTP">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Room *</label>
+                    <select id="roomSelect" class="form-input" required>
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">ID Type</label>
+                    <select id="idType" class="form-input">
+                        <option value="passport">Passport</option>
+                        <option value="ktp">KTP (Indonesian ID)</option>
+                        <option value="sim">SIM</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Check-in *</label>
+                    <input type="date" id="checkIn" class="form-input" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Check-out *</label>
+                    <input type="date" id="checkOut" class="form-input" required>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Booking Type</label>
+                    <select id="bookingType" class="form-input">
+                        <option value="walkin">Walk-in</option>
+                        <option value="online">Online</option>
+                        <option value="extension">Extension</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Source</label>
+                    <select id="bookingSource" class="form-input">
+                        <option value="manual">Manual</option>
+                        <option value="bookingcom">Booking.com</option>
+                        <option value="agoda">Agoda</option>
+                        <option value="traveloka">Traveloka</option>
+                        <option value="tripadvisor">TripAdvisor</option>
+                        <option value="hostelworld">Hostelworld</option>
+                        <option value="walkin">Walk-in</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Total Price (IDR)</label>
+                    <input type="number" id="totalPrice" class="form-input" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Amount Paid (IDR)</label>
+                    <input type="number" id="amountPaid" class="form-input" placeholder="0">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Payment Status</label>
+                    <select id="paymentStatus" class="form-input">
+                        <option value="pending">Pending</option>
+                        <option value="partial">Partial</option>
+                        <option value="paid">Paid</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Payment Method</label>
+                    <select id="paymentMethod" class="form-input">
+                        <option value="cash">Cash</option>
+                        <option value="transfer">Bank Transfer</option>
+                        <option value="card">Credit Card</option>
+                        <option value="ewallet">E-Wallet</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Notes</label>
+                <textarea id="bookingNotes" class="form-input" rows="2" placeholder="Any special requests..."></textarea>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="submit" class="btn-primary flex-1">
+                    <i class="fas fa-save mr-2"></i>Save Booking
+                </button>
+                <button type="button" onclick="closeModal('bookingModal')" class="btn-secondary">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Room Type Modal -->
+<div class="modal-overlay" id="roomTypeModal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Add Room Type</h3>
+        </div>
+        <form id="roomTypeForm" class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Name *</label>
+                <input type="text" id="rtName" class="form-input" placeholder="e.g. Deluxe Room" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Color</label>
+                <input type="color" id="rtColor" class="form-input h-10" value="#e8e4dc">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Base Price (IDR)</label>
+                    <input type="number" id="rtPrice" class="form-input" placeholder="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Capacity</label>
+                    <input type="number" id="rtCapacity" class="form-input" value="2" min="1">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Description</label>
+                <textarea id="rtDesc" class="form-input" rows="2" placeholder="Room description..."></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="btn-primary flex-1">Add Room Type</button>
+                <button type="button" onclick="closeModal('roomTypeModal')" class="btn-secondary">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Room Modal -->
+<div class="modal-overlay" id="roomModal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Add Room</h3>
+        </div>
+        <form id="roomForm" class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Room Name/Number *</label>
+                <input type="text" id="roomName" class="form-input" placeholder="e.g. A1, 101" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Room Type *</label>
+                <select id="roomTypeSelect" class="form-input" required>
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Floor</label>
+                <input type="text" id="roomFloor" class="form-input" placeholder="1">
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="btn-primary flex-1">Add Room</button>
+                <button type="button" onclick="closeModal('roomModal')" class="btn-secondary">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Price Modal -->
+<div class="modal-overlay" id="priceModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Set Daily Prices</h3>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Room Type</label>
+                <select id="priceRoomType" class="form-input">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Start Date</label>
+                    <input type="date" id="priceStart" class="form-input">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">End Date</label>
+                    <input type="date" id="priceEnd" class="form-input">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Price per Night (IDR)</label>
+                <input type="number" id="priceValue" class="form-input" placeholder="0">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="savePrices()" class="btn-primary flex-1">Save Prices</button>
+                <button onclick="closeModal('priceModal')" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Booking Details Modal -->
+<div class="modal-overlay" id="bookingDetailsModal">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-800">Booking Details</h3>
+                <button onclick="closeModal('bookingDetailsModal')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="p-6 space-y-4" id="bookingDetailsContent">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentStartDate = new Date();
+    currentStartDate.setDate(currentStartDate.getDate() - 3);
+    let rooms = [];
+    let roomTypes = [];
+    let calendarData = {};
+
+    function formatDate(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    function addDays(date, days) {
+        const result = new Date(date);
+        result.setDate(result.getDate() + days);
+        return result;
+    }
+
+    async function loadCalendar() {
+        const start = formatDate(currentStartDate);
+        const end = formatDate(addDays(currentStartDate, 30));
+
+        document.getElementById('dateRange').textContent = 
+            `${start} to ${end}`;
+
+        try {
+            [rooms, roomTypes, calendarData] = await Promise.all([
+                apiCall('/api/rooms'),
+                apiCall('/api/room-types'),
+                apiCall(`/api/calendar-data?start=${start}&end=${end}`)
+            ]);
+
+            renderCalendar();
+            populateSelects();
+        } catch (error) {
+            console.error('Calendar load error:', error);
+        }
+    }
+
+    function renderCalendar() {
+        const container = document.getElementById('calendarContainer');
+        const dates = calendarData.dates || [];
+        const roomData = calendarData.rooms || [];
+
+        let html = '<div class="calendar-grid">';
+
+        // Corner cell
+        html += '<div class="room-header" style="position:sticky;left:0;z-index:20;background:#f0ece4;">Room</div>';
+
+        // Date headers
+        dates.forEach(dateStr => {
+            const date = new Date(dateStr);
+            const isToday = dateStr === formatDate(new Date());
+            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+            html += `
+                <div class="date-header ${isToday ? 'bg-amber-100' : ''} ${isWeekend ? 'text-amber-700' : ''}">
+                    <div class="day-name">${date.toLocaleDateString('en', {weekday:'short'})}</div>
+                    <div class="day-num ${isToday ? 'text-amber-700' : ''}">${date.getDate()}</div>
+                </div>
+            `;
+        });
+
+        // Room rows
+        roomData.forEach(room => {
+            // Room header
+            html += `
+                <div class="room-header" style="background:${room.color}20;">
+                    <div class="text-center">
+                        <div class="font-bold">${room.name}</div>
+                        <div class="text-xs text-gray-500">${room.room_type_name}</div>
+                    </div>
+                    <div class="room-actions">
+                        <button onclick="openBookingModal(null, ${room.id})" title="Add booking">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Date cells
+            dates.forEach(dateStr => {
+                const date = new Date(dateStr);
+                const isToday = dateStr === formatDate(new Date());
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+                // Find bookings for this room and date
+                const cellBookings = room.bookings.filter(b => {
+                    const checkIn = new Date(b.check_in);
+                    const checkOut = new Date(b.check_out);
+                    const cellDate = new Date(dateStr);
+                    return cellDate >= checkIn && cellDate < checkOut;
+                });
+
+                let cellContent = '';
+                let cellClass = '';
+
+                if (cellBookings.length > 0) {
+                    const booking = cellBookings[0];
+                    const isFirstDay = dateStr === booking.check_in;
+                    const isLastDay = dateStr === formatDate(addDays(new Date(booking.check_out), -1));
+
+                    if (isFirstDay || cellBookings.length > 0) {
+                        const sourceClass = booking.source || 'manual';
+                        const width = isFirstDay ? `width: ${booking.nights * 100 - 4}%; z-index: 5;` : 'display:none;';
+
+                        cellContent = `
+                            <div class="booking-bar ${sourceClass} ${booking.payment_status}" 
+                                 style="${isFirstDay ? width : ''}"
+                                 onclick="showBookingDetails(${booking.id})"
+                                 title="${booking.guest_name} - ${booking.source}">
+                                ${isFirstDay ? `<span class="px-1 truncate">${booking.guest_name}</span>` : ''}
+                            </div>
+                        `;
+                    }
+                } else {
+                    cellContent = `
+                        <div class="add-booking-cell" onclick="openBookingModal('${dateStr}', ${room.id})">
+                            <i class="fas fa-plus-circle"></i>
+                        </div>
+                    `;
+                }
+
+                html += `
+                    <div class="calendar-cell ${isToday ? 'today' : ''} ${isWeekend ? 'weekend' : ''}"
+                         onclick="if(!event.target.closest('.booking-bar')) openBookingModal('${dateStr}', ${room.id})">
+                        ${cellContent}
+                    </div>
+                `;
+            });
+        });
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function populateSelects() {
+        const roomSelect = document.getElementById('roomSelect');
+        const roomTypeSelect = document.getElementById('roomTypeSelect');
+        const priceRoomType = document.getElementById('priceRoomType');
+
+        roomSelect.innerHTML = rooms.map(r => 
+            `<option value="${r.id}">${r.name} (${r.room_type_name})</option>`
+        ).join('');
+
+        roomTypeSelect.innerHTML = roomTypes.map(rt => 
+            `<option value="${rt.id}">${rt.name}</option>`
+        ).join('');
+
+        priceRoomType.innerHTML = roomTypes.map(rt => 
+            `<option value="${rt.id}">${rt.name}</option>`
+        ).join('');
+    }
+
+    function changeDate(days) {
+        currentStartDate = addDays(currentStartDate, days);
+        loadCalendar();
+    }
+
+    function goToToday() {
+        currentStartDate = new Date();
+        currentStartDate.setDate(currentStartDate.getDate() - 3);
+        loadCalendar();
+    }
+
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('active');
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+    }
+
+    function openBookingModal(dateStr, roomId) {
+        document.getElementById('bookingForm').reset();
+        document.getElementById('bookingId').value = '';
+        document.getElementById('modalTitle').textContent = 'Add Booking';
+
+        if (dateStr) {
+            document.getElementById('checkIn').value = dateStr;
+            const nextDay = addDays(new Date(dateStr), 1);
+            document.getElementById('checkOut').value = formatDate(nextDay);
+        }
+
+        if (roomId) {
+            document.getElementById('roomSelect').value = roomId;
+        }
+
+        openModal('bookingModal');
+    }
+
+    function openRoomTypeModal() {
+        document.getElementById('roomTypeForm').reset();
+        openModal('roomTypeModal');
+    }
+
+    function openRoomModal() {
+        document.getElementById('roomForm').reset();
+        openModal('roomModal');
+    }
+
+    function openPriceModal() {
+        const today = formatDate(new Date());
+        document.getElementById('priceStart').value = today;
+        const nextMonth = addDays(new Date(), 30);
+        document.getElementById('priceEnd').value = formatDate(nextMonth);
+        openModal('priceModal');
+    }
+
+    async function showBookingDetails(bookingId) {
+        try {
+            const bookings = await apiCall('/api/bookings');
+            const booking = bookings.find(b => b.id === bookingId);
+            if (!booking) return;
+
+            const sourceLabels = {
+                'bookingcom': 'Booking.com',
+                'agoda': 'Agoda',
+                'traveloka': 'Traveloka',
+                'tripadvisor': 'TripAdvisor',
+                'hostelworld': 'Hostelworld',
+                'manual': 'Manual',
+                'walkin': 'Walk-in'
+            };
+
+            const paymentColors = {
+                'pending': 'text-red-500',
+                'partial': 'text-orange-500',
+                'paid': 'text-green-500'
+            };
+
+            document.getElementById('bookingDetailsContent').innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex items-center gap-3 pb-3 border-b border-gray-200">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center text-white font-bold text-lg">
+                            ${booking.guest_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">${booking.guest_name}</h4>
+                            <span class="source-badge ${booking.source}">${sourceLabels[booking.source] || booking.source}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500 text-xs">Room</p>
+                            <p class="font-semibold text-gray-700">${booking.room_name}</p>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500 text-xs">Nights</p>
+                            <p class="font-semibold text-gray-700">${booking.nights} nights</p>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500 text-xs">Check-in</p>
+                            <p class="font-semibold text-gray-700">${booking.check_in}</p>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500 text-xs">Check-out</p>
+                            <p class="font-semibold text-gray-700">${booking.check_out}</p>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-gray-50 rounded-lg">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600">Total Price</span>
+                            <span class="font-semibold">Rp ${booking.total_price.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600">Amount Paid</span>
+                            <span class="font-semibold">Rp ${booking.amount_paid.toLocaleString('id-ID')}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Balance</span>
+                            <span class="font-semibold ${(booking.total_price - booking.amount_paid) > 0 ? 'text-red-500' : 'text-green-500'}">
+                                Rp ${(booking.total_price - booking.amount_paid).toLocaleString('id-ID')}
+                            </span>
+                        </div>
+                        <div class="mt-2 pt-2 border-t border-gray-200">
+                            <span class="text-xs text-gray-500">Status: </span>
+                            <span class="text-xs font-semibold ${paymentColors[booking.payment_status]}">${booking.payment_status.toUpperCase()}</span>
+                        </div>
+                    </div>
+
+                    ${booking.guest_phone ? `
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500 text-xs">Phone</p>
+                            <p class="font-semibold text-gray-700">${booking.guest_phone}</p>
+                        </div>
+                    ` : ''}
+
+                    ${booking.guest_email ? `
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500 text-xs">Email</p>
+                            <p class="font-semibold text-gray-700">${booking.guest_email}</p>
+                        </div>
+                    ` : ''}
+
+                    ${booking.notes ? `
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-gray-500 text-xs">Notes</p>
+                            <p class="text-sm text-gray-700">${booking.notes}</p>
+                        </div>
+                    ` : ''}
+
+                    <div class="flex gap-2 pt-2">
+                        ${booking.payment_status !== 'paid' ? `
+                            <button onclick="confirmPayment(${booking.id})" class="btn-success flex-1 text-sm">
+                                <i class="fas fa-check mr-2"></i>Confirm Payment
+                            </button>
+                        ` : ''}
+                        <button onclick="extendBooking(${booking.id}, '${booking.check_out}')" class="btn-primary flex-1 text-sm">
+                            <i class="fas fa-calendar-plus mr-2"></i>Extend Stay
+                        </button>
+                        <button onclick="editBooking(${booking.id})" class="btn-secondary text-sm">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            openModal('bookingDetailsModal');
+        } catch (error) {
+            console.error('Booking details error:', error);
+        }
+    }
+
+    async function confirmPayment(bookingId) {
+        try {
+            await apiCall(`/api/confirm-payment/${bookingId}`, {
+                method: 'POST',
+                body: JSON.stringify({})
+            });
+            showToast('Payment confirmed!');
+            closeModal('bookingDetailsModal');
+            loadCalendar();
+        } catch (error) {
+            console.error('Payment confirmation error:', error);
+        }
+    }
+
+    async function extendBooking(bookingId, currentCheckOut) {
+        const newDate = prompt('Enter new check-out date (YYYY-MM-DD):', currentCheckOut);
+        if (!newDate || newDate === currentCheckOut) return;
+
+        try {
+            await apiCall(`/api/extend-booking/${bookingId}`, {
+                method: 'POST',
+                body: JSON.stringify({ check_out: newDate })
+            });
+            showToast('Booking extended!');
+            closeModal('bookingDetailsModal');
+            loadCalendar();
+        } catch (error) {
+            console.error('Extend booking error:', error);
+        }
+    }
+
+    async function editBooking(bookingId) {
+        try {
+            const bookings = await apiCall('/api/bookings');
+            const booking = bookings.find(b => b.id === bookingId);
+            if (!booking) return;
+
+            document.getElementById('bookingId').value = booking.id;
+            document.getElementById('guestName').value = booking.guest_name;
+            document.getElementById('guestPhone').value = booking.guest_phone || '';
+            document.getElementById('guestEmail').value = booking.guest_email || '';
+            document.getElementById('guestId').value = booking.guest_id || '';
+            document.getElementById('roomSelect').value = booking.room_id;
+            document.getElementById('checkIn').value = booking.check_in;
+            document.getElementById('checkOut').value = booking.check_out;
+            document.getElementById('bookingType').value = booking.booking_type;
+            document.getElementById('bookingSource').value = booking.source;
+            document.getElementById('totalPrice').value = booking.total_price;
+            document.getElementById('amountPaid').value = booking.amount_paid;
+            document.getElementById('paymentStatus').value = booking.payment_status;
+            document.getElementById('paymentMethod').value = booking.payment_method;
+            document.getElementById('bookingNotes').value = booking.notes || '';
+
+            document.getElementById('modalTitle').textContent = 'Edit Booking';
+            closeModal('bookingDetailsModal');
+            openModal('bookingModal');
+        } catch (error) {
+            console.error('Edit booking error:', error);
+        }
+    }
+
+    // Form submissions
+    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const bookingId = document.getElementById('bookingId').value;
+
+        const data = {
+            guest_name: document.getElementById('guestName').value,
+            guest_phone: document.getElementById('guestPhone').value,
+            guest_email: document.getElementById('guestEmail').value,
+            guest_id: document.getElementById('guestId').value,
+            id_type: document.getElementById('idType').value,
+            room_id: parseInt(document.getElementById('roomSelect').value),
+            check_in: document.getElementById('checkIn').value,
+            check_out: document.getElementById('checkOut').value,
+            booking_type: document.getElementById('bookingType').value,
+            source: document.getElementById('bookingSource').value,
+            total_price: parseFloat(document.getElementById('totalPrice').value) || 0,
+            amount_paid: parseFloat(document.getElementById('amountPaid').value) || 0,
+            payment_status: document.getElementById('paymentStatus').value,
+            payment_method: document.getElementById('paymentMethod').value,
+            notes: document.getElementById('bookingNotes').value
+        };
+
+        try {
+            if (bookingId) {
+                await apiCall(`/api/bookings/${bookingId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(data)
+                });
+                showToast('Booking updated!');
+            } else {
+                await apiCall('/api/bookings', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                showToast('Booking created!');
+            }
+
+            closeModal('bookingModal');
+            loadCalendar();
+        } catch (error) {
+            console.error('Booking save error:', error);
+        }
+    });
+
+    document.getElementById('roomTypeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            name: document.getElementById('rtName').value,
+            color: document.getElementById('rtColor').value,
+            base_price: parseFloat(document.getElementById('rtPrice').value) || 0,
+            capacity: parseInt(document.getElementById('rtCapacity').value) || 2,
+            description: document.getElementById('rtDesc').value
+        };
+
+        try {
+            await apiCall('/api/room-types', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            showToast('Room type added!');
+            closeModal('roomTypeModal');
+            loadCalendar();
+        } catch (error) {
+            console.error('Room type save error:', error);
+        }
+    });
+
+    document.getElementById('roomForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            name: document.getElementById('roomName').value,
+            room_type_id: parseInt(document.getElementById('roomTypeSelect').value),
+            floor: document.getElementById('roomFloor').value || '1'
+        };
+
+        try {
+            await apiCall('/api/rooms', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            showToast('Room added!');
+            closeModal('roomModal');
+            loadCalendar();
+        } catch (error) {
+            console.error('Room save error:', error);
+        }
+    });
+
+    async function savePrices() {
+        const roomTypeId = document.getElementById('priceRoomType').value;
+        const start = document.getElementById('priceStart').value;
+        const end = document.getElementById('priceEnd').value;
+        const price = parseFloat(document.getElementById('priceValue').value);
+
+        if (!start || !end || !price) {
+            showToast('Please fill all fields', 'error');
+            return;
+        }
+
+        const prices = [];
+        let current = new Date(start);
+        const endDate = new Date(end);
+
+        while (current <= endDate) {
+            prices.push({
+                room_type_id: parseInt(roomTypeId),
+                date: formatDate(current),
+                price: price
+            });
+            current.setDate(current.getDate() + 1);
+        }
+
+        try {
+            await apiCall('/api/prices', {
+                method: 'POST',
+                body: JSON.stringify(prices)
+            });
+            showToast('Prices saved!');
+            closeModal('priceModal');
+        } catch (error) {
+            console.error('Price save error:', error);
+        }
+    }
+
+    // Close modals on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.remove('active');
+            }
+        });
+    });
+
+    // Initialize
+    loadCalendar();
+</script>
+{% endblock %}

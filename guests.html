@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Guests - Hostel CRM{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Guests</h1>
+            <p class="text-sm text-gray-500 mt-1">Guest directory and history</p>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+        <input type="text" id="guestSearch" class="form-input" placeholder="Search guests by name, email, or phone..." onkeyup="filterGuests()">
+    </div>
+
+    <!-- Guests Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="guestsGrid">
+        <!-- Populated by JS -->
+    </div>
+
+    <div id="noGuests" class="hidden p-8 text-center text-gray-500">
+        <i class="fas fa-users text-3xl mb-2 text-gray-300"></i>
+        <p>No guests found</p>
+    </div>
+</div>
+
+<script>
+    let allGuests = [];
+
+    async function loadGuests() {
+        try {
+            const bookings = await apiCall('/api/bookings');
+
+            // Group by guest name/email
+            const guestMap = {};
+            bookings.forEach(b => {
+                const key = b.guest_email || b.guest_name;
+                if (!guestMap[key]) {
+                    guestMap[key] = {
+                        name: b.guest_name,
+                        email: b.guest_email,
+                        phone: b.guest_phone,
+                        id: b.guest_id,
+                        id_type: b.id_type,
+                        bookings: [],
+                        totalSpent: 0,
+                        totalNights: 0
+                    };
+                }
+                guestMap[key].bookings.push(b);
+                guestMap[key].totalSpent += b.total_price;
+                guestMap[key].totalNights += b.nights;
+            });
+
+            allGuests = Object.values(guestMap);
+            renderGuests(allGuests);
+        } catch (error) {
+            console.error('Guests load error:', error);
+        }
+    }
+
+    function renderGuests(guests) {
+        const grid = document.getElementById('guestsGrid');
+        const noGuests = document.getElementById('noGuests');
+
+        if (guests.length === 0) {
+            grid.innerHTML = '';
+            noGuests.classList.remove('hidden');
+            return;
+        }
+
+        noGuests.classList.add('hidden');
+
+        grid.innerHTML = guests.map(g => `
+            <div class="stat-card hover:shadow-md transition-shadow cursor-pointer" onclick="showGuestDetails('${g.name}')">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center text-white font-bold text-lg">
+                        ${g.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-semibold text-gray-800 truncate">${g.name}</h4>
+                        <p class="text-xs text-gray-500">${g.bookings.length} bookings</p>
+                    </div>
+                </div>
+
+                <div class="space-y-2 text-sm">
+                    ${g.phone ? `
+                        <div class="flex items-center gap-2 text-gray-600">
+                            <i class="fas fa-phone text-xs text-gray-400 w-4"></i>
+                            <span>${g.phone}</span>
+                        </div>
+                    ` : ''}
+                    ${g.email ? `
+                        <div class="flex items-center gap-2 text-gray-600">
+                            <i class="fas fa-envelope text-xs text-gray-400 w-4"></i>
+                            <span class="truncate">${g.email}</span>
+                        </div>
+                    ` : ''}
+                    ${g.id ? `
+                        <div class="flex items-center gap-2 text-gray-600">
+                            <i class="fas fa-id-card text-xs text-gray-400 w-4"></i>
+                            <span>${g.id_type}: ${g.id}</span>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-xs text-gray-500">${g.totalNights} total nights</span>
+                    <span class="text-sm font-semibold text-gray-700">Rp ${g.totalSpent.toLocaleString('id-ID')}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function filterGuests() {
+        const search = document.getElementById('guestSearch').value.toLowerCase();
+        const filtered = allGuests.filter(g => 
+            g.name.toLowerCase().includes(search) ||
+            (g.email && g.email.toLowerCase().includes(search)) ||
+            (g.phone && g.phone.includes(search))
+        );
+        renderGuests(filtered);
+    }
+
+    function showGuestDetails(name) {
+        window.location.href = '/bookings';
+    }
+
+    loadGuests();
+</script>
+{% endblock %}
